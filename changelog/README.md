@@ -1,5 +1,10 @@
 ## Changelog
 
+### 3.3.2 (in progress)
+
+- [improvement] JAVA-1196: Include hash of result set metadata in prepared statement id.
+
+
 ### 3.3.1
 
 - [bug] JAVA-1555: Include VIEW and CDC in WriteType.
