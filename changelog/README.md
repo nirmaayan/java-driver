@@ -4,6 +4,8 @@
 
 ### 4.0.0-alpha3 (in progress)
 
+- [new feature] JAVA-1524: Add query trace API
+
 ### 4.0.0-alpha2
 
 - [new feature] JAVA-1525: Handle token metadata
