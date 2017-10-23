@@ -50,7 +50,6 @@ public class InFlightHandler extends ChannelDuplexHandler {
   private final String ownerLogPrefix;
   private final BiMap<Integer, ResponseCallback> inFlight;
   private final long setKeyspaceTimeoutMillis;
-  private final AvailableIdsHolder availableIdsHolder;
   private final EventCallback eventCallback;
   private final int maxOrphanStreamIds;
   private boolean closingGracefully;
@@ -63,7 +62,6 @@ public class InFlightHandler extends ChannelDuplexHandler {
       StreamIdGenerator streamIds,
       int maxOrphanStreamIds,
       long setKeyspaceTimeoutMillis,
-      AvailableIdsHolder availableIdsHolder,
       ChannelPromise closeStartedFuture,
       EventCallback eventCallback,
       String ownerLogPrefix) {
@@ -73,10 +71,8 @@ public class InFlightHandler extends ChannelDuplexHandler {
     this.closeStartedFuture = closeStartedFuture;
     this.ownerLogPrefix = ownerLogPrefix;
     this.logPrefix = ownerLogPrefix + "|connecting...";
-    reportAvailableIds();
     this.inFlight = HashBiMap.create(streamIds.getMaxAvailableIds());
     this.setKeyspaceTimeoutMillis = setKeyspaceTimeoutMillis;
-    this.availableIdsHolder = availableIdsHolder;
     this.eventCallback = eventCallback;
   }
 
@@ -126,8 +122,6 @@ public class InFlightHandler extends ChannelDuplexHandler {
           new IllegalStateException("Found pending callback for stream id " + streamId));
       return;
     }
-
-    reportAvailableIds();
 
     LOG.debug("[{}] Writing {} on stream id {}", logPrefix, message.responseCallback, streamId);
     Frame frame =
@@ -306,7 +300,6 @@ public class InFlightHandler extends ChannelDuplexHandler {
     LOG.debug("[{}] Releasing stream id {}", logPrefix, streamId);
     ResponseCallback responseCallback = inFlight.remove(streamId);
     streamIds.release(streamId);
-    reportAvailableIds();
     // If we're in the middle of an orderly close and this was the last request, actually close
     // the channel now
     if (closingGracefully && inFlight.isEmpty()) {
@@ -335,10 +328,8 @@ public class InFlightHandler extends ChannelDuplexHandler {
     // closing the channel
   }
 
-  private void reportAvailableIds() {
-    if (availableIdsHolder != null) {
-      availableIdsHolder.value = streamIds.getAvailableIds();
-    }
+  int getAvailableIds() {
+    return streamIds.getAvailableIds();
   }
 
   private class SetKeyspaceRequest extends ChannelHandlerRequest {
