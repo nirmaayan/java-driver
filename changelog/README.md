@@ -4,6 +4,7 @@
 
 ### 4.0.0-alpha3 (in progress)
 
+- [new feature] JAVA-1526: Provide a single load balancing policy implementation
 - [bug] JAVA-1584: Validate that no bound values are unset in protocol v3
 
 ### 4.0.0-alpha2
