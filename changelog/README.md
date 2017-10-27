@@ -4,6 +4,8 @@
 
 ### 4.0.0-alpha3 (in progress)
 
+- [improvement] JAVA-1646: Provide a more readable error when connecting to Cassandra 2.0 or lower
+
 ### 4.0.0-alpha2
 
 - [new feature] JAVA-1525: Handle token metadata
