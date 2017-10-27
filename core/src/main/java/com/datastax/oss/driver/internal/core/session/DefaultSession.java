@@ -19,11 +19,11 @@ import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.InvalidKeyspaceException;
 import com.datastax.oss.driver.api.core.config.CoreDriverOption;
 import com.datastax.oss.driver.api.core.config.DriverConfig;
+import com.datastax.oss.driver.api.core.cql.CqlSession;
 import com.datastax.oss.driver.api.core.loadbalancing.LoadBalancingPolicy;
 import com.datastax.oss.driver.api.core.loadbalancing.NodeDistance;
 import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.api.core.metadata.NodeState;
-import com.datastax.oss.driver.api.core.cql.CqlSession;
 import com.datastax.oss.driver.api.core.session.Request;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.datastax.oss.driver.internal.core.channel.DriverChannel;
@@ -325,7 +325,7 @@ public class DefaultSession implements CqlSession {
       NodeDistance newDistance = event.distance;
       if (pending.containsKey(node)) {
         pendingDistanceEvents.put(node, event);
-      } else if (newDistance == NodeDistance.IGNORED && pools.containsKey(node)) {
+      } else if (newDistance == NodeDistance.IGNORED) {
         ChannelPool pool = pools.remove(node);
         if (pool != null) {
           LOG.debug("[{}] {} became IGNORED, destroying pool", logPrefix, node);
