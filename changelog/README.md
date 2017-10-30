@@ -4,6 +4,8 @@
 
 ### 4.0.0-alpha3 (in progress)
 
+- [improvement] JAVA-1645: Don't log stack traces at WARN level
+
 ### 4.0.0-alpha2
 
 - [new feature] JAVA-1525: Handle token metadata
