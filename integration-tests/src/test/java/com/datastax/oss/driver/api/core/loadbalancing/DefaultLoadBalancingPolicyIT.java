@@ -43,6 +43,7 @@ import org.junit.ClassRule;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.withinPercentage;
 
 public class DefaultLoadBalancingPolicyIT {
 
@@ -146,7 +147,7 @@ public class DefaultLoadBalancingPolicyIT {
       // Since the exact order is randomized, just run a bunch of queries and check that we get a
       // reasonable distribution:
       Map<Node, Integer> hits = new HashMap<>();
-      for (int i = 0; i < 300; i++) {
+      for (int i = 0; i < 3000; i++) {
         ResultSet rs = clusterRule.session().execute(statement);
         Node coordinator = rs.getExecutionInfo().getCoordinator();
         assertThat(localReplicas).contains(coordinator);
@@ -155,7 +156,7 @@ public class DefaultLoadBalancingPolicyIT {
       }
 
       for (Integer count : hits.values()) {
-        assertThat(count).isBetween(90, 110);
+        assertThat(count).isCloseTo(1000, withinPercentage(10));
       }
     }
   }
