@@ -55,9 +55,7 @@ public class DefaultLoadBalancingPolicyIT {
       ClusterRule.builder(ccmRule)
           .withKeyspace(false)
           .withDefaultSession(true)
-          .withOptions(
-              "load-balancing-policy.local-datacenter = " + LOCAL_DC,
-              "request.timeout = 30 seconds")
+          .withOptions("request.timeout = 30 seconds")
           .build();
 
   @BeforeClass
