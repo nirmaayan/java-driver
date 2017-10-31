@@ -122,7 +122,7 @@ public class DefaultLoadBalancingPolicy implements LoadBalancingPolicy {
       ImmutableMap.Builder<InetSocketAddress, String> builder = ImmutableMap.builder();
       for (InetSocketAddress address : contactPoints) {
         Node node = nodes.get(address);
-        if (!localDc.equals(node.getDatacenter())) {
+        if (node != null && !localDc.equals(node.getDatacenter())) {
           builder.put(address, node.getDatacenter());
         }
       }
