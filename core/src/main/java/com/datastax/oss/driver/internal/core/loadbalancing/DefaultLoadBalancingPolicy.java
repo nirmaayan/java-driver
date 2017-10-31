@@ -116,7 +116,7 @@ public class DefaultLoadBalancingPolicy implements LoadBalancingPolicy {
     } else if (localDc == null) {
       throw new IllegalStateException(
           "You provided explicit contact points, the local DC must be specified (see "
-              + CoreDriverOption.LOAD_BALANCING_LOCAL_DATACENTER
+              + CoreDriverOption.LOAD_BALANCING_LOCAL_DATACENTER.getPath()
               + " in the config)");
     } else {
       ImmutableMap.Builder<InetSocketAddress, String> builder = ImmutableMap.builder();
