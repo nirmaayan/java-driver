@@ -15,6 +15,7 @@
  */
 package com.datastax.oss.driver.internal.core.cql;
 
+import com.datastax.oss.driver.api.core.ConsistencyLevel;
 import com.datastax.oss.driver.api.core.config.CoreDriverOption;
 import com.datastax.oss.driver.api.core.config.DriverConfigProfile;
 import com.datastax.oss.driver.api.core.cql.AsyncResultSet;
@@ -66,6 +67,7 @@ public class QueryTraceFetcherTest {
   @Mock private CqlSession session;
   @Mock private InternalDriverContext context;
   @Mock private DriverConfigProfile config;
+  @Mock private DriverConfigProfile traceConfig;
   @Mock private NettyOptions nettyOptions;
   @Mock private EventExecutorGroup adminEventExecutorGroup;
   @Mock private EventExecutor eventExecutor;
@@ -92,6 +94,12 @@ public class QueryTraceFetcherTest {
     // Doesn't really matter since we mock the scheduler
     Mockito.when(config.getDuration(CoreDriverOption.REQUEST_TRACE_INTERVAL))
         .thenReturn(Duration.ZERO);
+    Mockito.when(config.getConsistencyLevel(CoreDriverOption.REQUEST_TRACE_CONSISTENCY))
+        .thenReturn(ConsistencyLevel.ONE);
+
+    Mockito.when(
+            config.withConsistencyLevel(CoreDriverOption.REQUEST_CONSISTENCY, ConsistencyLevel.ONE))
+        .thenReturn(traceConfig);
   }
 
   @Test
@@ -109,12 +117,9 @@ public class QueryTraceFetcherTest {
     // Then
     Mockito.verify(session, times(2)).executeAsync(statementCaptor.capture());
     List<SimpleStatement> statements = statementCaptor.getAllValues();
-    assertThat(statements.get(0).getQuery())
-        .isEqualTo("SELECT * FROM system_traces.sessions WHERE session_id = ?");
-    assertThat(statements.get(0).getPositionalValues()).containsOnly(TRACING_ID);
-    assertThat(statements.get(1).getQuery())
-        .isEqualTo("SELECT * FROM system_traces.events WHERE session_id = ?");
-    assertThat(statements.get(1).getPositionalValues()).containsOnly(TRACING_ID);
+    assertSessionQuery(statements.get(0));
+    SimpleStatement statement = statements.get(1);
+    assertEventsQuery(statement);
     Mockito.verifyNoMoreInteractions(session);
 
     assertThat(traceFuture)
@@ -163,15 +168,9 @@ public class QueryTraceFetcherTest {
     // Then
     Mockito.verify(session, times(3)).executeAsync(statementCaptor.capture());
     List<SimpleStatement> statements = statementCaptor.getAllValues();
-    assertThat(statements.get(0).getQuery())
-        .isEqualTo("SELECT * FROM system_traces.sessions WHERE session_id = ?");
-    assertThat(statements.get(0).getPositionalValues()).containsOnly(TRACING_ID);
-    assertThat(statements.get(1).getQuery())
-        .isEqualTo("SELECT * FROM system_traces.events WHERE session_id = ?");
-    assertThat(statements.get(1).getPositionalValues()).containsOnly(TRACING_ID);
-    assertThat(statements.get(2).getQuery())
-        .isEqualTo("SELECT * FROM system_traces.events WHERE session_id = ?");
-    assertThat(statements.get(2).getPositionalValues()).containsOnly(TRACING_ID);
+    assertSessionQuery(statements.get(0));
+    assertEventsQuery(statements.get(1));
+    assertEventsQuery(statements.get(2));
     assertThat(statements.get(2).getPagingState()).isEqualTo(PAGING_STATE);
     Mockito.verifyNoMoreInteractions(session);
 
@@ -194,15 +193,9 @@ public class QueryTraceFetcherTest {
     // Then
     Mockito.verify(session, times(3)).executeAsync(statementCaptor.capture());
     List<SimpleStatement> statements = statementCaptor.getAllValues();
-    assertThat(statements.get(0).getQuery())
-        .isEqualTo("SELECT * FROM system_traces.sessions WHERE session_id = ?");
-    assertThat(statements.get(0).getPositionalValues()).containsOnly(TRACING_ID);
-    assertThat(statements.get(1).getQuery())
-        .isEqualTo("SELECT * FROM system_traces.sessions WHERE session_id = ?");
-    assertThat(statements.get(1).getPositionalValues()).containsOnly(TRACING_ID);
-    assertThat(statements.get(2).getQuery())
-        .isEqualTo("SELECT * FROM system_traces.events WHERE session_id = ?");
-    assertThat(statements.get(2).getPositionalValues()).containsOnly(TRACING_ID);
+    assertSessionQuery(statements.get(0));
+    assertSessionQuery(statements.get(1));
+    assertEventsQuery(statements.get(2));
     Mockito.verifyNoMoreInteractions(session);
 
     assertThat(traceFuture)
@@ -245,9 +238,7 @@ public class QueryTraceFetcherTest {
     // Then
     Mockito.verify(session).executeAsync(statementCaptor.capture());
     SimpleStatement statement = statementCaptor.getValue();
-    assertThat(statement.getQuery())
-        .isEqualTo("SELECT * FROM system_traces.sessions WHERE session_id = ?");
-    assertThat(statement.getPositionalValues()).containsOnly(TRACING_ID);
+    assertSessionQuery(statement);
     Mockito.verifyNoMoreInteractions(session);
 
     assertThat(traceFuture).isFailed(error -> assertThat(error).isSameAs(mockError));
@@ -270,9 +261,7 @@ public class QueryTraceFetcherTest {
     Mockito.verify(session, times(3)).executeAsync(statementCaptor.capture());
     List<SimpleStatement> statements = statementCaptor.getAllValues();
     for (int i = 0; i < 3; i++) {
-      assertThat(statements.get(i).getQuery())
-          .isEqualTo("SELECT * FROM system_traces.sessions WHERE session_id = ?");
-      assertThat(statements.get(i).getPositionalValues()).containsOnly(TRACING_ID);
+      assertSessionQuery(statements.get(i));
     }
 
     assertThat(traceFuture)
@@ -360,5 +349,19 @@ public class QueryTraceFetcherTest {
     Mockito.when(row.getInt("source_elapsed")).thenReturn(i);
     Mockito.when(row.getString("thread")).thenReturn("mock thread " + i);
     return row;
+  }
+
+  private void assertSessionQuery(SimpleStatement statement) {
+    assertThat(statement.getQuery())
+        .isEqualTo("SELECT * FROM system_traces.sessions WHERE session_id = ?");
+    assertThat(statement.getPositionalValues()).containsOnly(TRACING_ID);
+    assertThat(statement.getConfigProfile()).isEqualTo(traceConfig);
+  }
+
+  private void assertEventsQuery(SimpleStatement statement) {
+    assertThat(statement.getQuery())
+        .isEqualTo("SELECT * FROM system_traces.events WHERE session_id = ?");
+    assertThat(statement.getPositionalValues()).containsOnly(TRACING_ID);
+    assertThat(statement.getConfigProfile()).isEqualTo(traceConfig);
   }
 }

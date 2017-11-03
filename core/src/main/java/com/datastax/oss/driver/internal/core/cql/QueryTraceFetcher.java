@@ -15,6 +15,7 @@
  */
 package com.datastax.oss.driver.internal.core.cql;
 
+import com.datastax.oss.driver.api.core.ConsistencyLevel;
 import com.datastax.oss.driver.api.core.config.CoreDriverOption;
 import com.datastax.oss.driver.api.core.config.DriverConfigProfile;
 import com.datastax.oss.driver.api.core.cql.CqlSession;
@@ -38,6 +39,7 @@ class QueryTraceFetcher {
 
   private final UUID tracingId;
   private final CqlSession session;
+  private final DriverConfigProfile configProfile;
   private final int maxAttempts;
   private final long intervalNanos;
   private final EventExecutor scheduler;
@@ -50,6 +52,17 @@ class QueryTraceFetcher {
       DriverConfigProfile configProfile) {
     this.tracingId = tracingId;
     this.session = session;
+
+    ConsistencyLevel regularConsistency =
+        configProfile.getConsistencyLevel(CoreDriverOption.REQUEST_CONSISTENCY);
+    ConsistencyLevel traceConsistency =
+        configProfile.getConsistencyLevel(CoreDriverOption.REQUEST_TRACE_CONSISTENCY);
+    this.configProfile =
+        (traceConsistency == regularConsistency)
+            ? configProfile
+            : configProfile.withConsistencyLevel(
+                CoreDriverOption.REQUEST_CONSISTENCY, traceConsistency);
+
     this.maxAttempts = configProfile.getInt(CoreDriverOption.REQUEST_TRACE_ATTEMPTS);
     this.intervalNanos =
         configProfile.getDuration(CoreDriverOption.REQUEST_TRACE_INTERVAL).toNanos();
@@ -65,8 +78,10 @@ class QueryTraceFetcher {
   private void querySession(int remainingAttempts) {
     session
         .executeAsync(
-            SimpleStatement.newInstance(
-                "SELECT * FROM system_traces.sessions WHERE session_id = ?", tracingId))
+            SimpleStatement.builder("SELECT * FROM system_traces.sessions WHERE session_id = ?")
+                .addPositionalValue(tracingId)
+                .withConfigProfile(configProfile)
+                .build())
         .whenComplete(
             (rs, error) -> {
               if (error != null) {
@@ -100,6 +115,7 @@ class QueryTraceFetcher {
             SimpleStatement.builder("SELECT * FROM system_traces.events WHERE session_id = ?")
                 .addPositionalValue(tracingId)
                 .withPagingState(pagingState)
+                .withConfigProfile(configProfile)
                 .build())
         .whenComplete(
             (rs, error) -> {
